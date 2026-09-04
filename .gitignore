@@ -1,0 +1,33 @@
+# Credentials - NEVER commit these
+.env
+
+# Generated data. This directory holds your Instagram session token, learned
+# notes about real people, and saved chat content. Keep it out of git.
+data/
+*.log
+
+# Legacy file locations from before data/ existed. Listed so anyone
+# upgrading an older checkout does not accidentally commit them.
+session.json
+personas.json
+chat_summary.txt
+computah_messages.txt
+triggered_messages.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.Python
+build/
+dist/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
