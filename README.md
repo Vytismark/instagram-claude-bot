@@ -1,19 +1,40 @@
-# Group Chat Bot
+# instagram-claude-bot
+
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Powered by Claude](https://img.shields.io/badge/powered%20by-Claude-d97757.svg)](https://www.anthropic.com/)
 
 An Instagram group chat bot powered by Claude. Say its name, it replies in
 character.
 
-Unlike a plain "message in, message out" wrapper, it keeps track of who is in
-the chat, learns short persona notes about each person over time, maintains a
-rolling summary of the conversation, and actively avoids repeating its own
-catchphrases.
+![Demo](docs/demo.gif)
 
-```
-[18:02] alex: computah how many people are in here
-  [computah triggered]
-  -> replied to 1 message(s): four of you, and three are currently trying to break me
-[18:02] computah_bot: @alex four of you, and three are currently trying to break me
-```
+## Why this exists
+
+Wiring a language model to a chat API is a weekend project. Getting one that
+does not feel like a chatbot is the harder part, and that is what most of the
+code here addresses.
+
+**Models settle into catchphrases.** Once a joke lands, it comes back every
+few replies until it is unbearable. A general instruction not to repeat
+itself does not hold. This bot scans its own recent replies for phrases
+appearing across multiple messages, filters out ordinary English, and names
+the survivors explicitly in the next prompt.
+
+**Context is expensive.** Sending the whole transcript on every reply gets
+costly fast, but a model with no memory cannot hold a conversation. The
+compromise here is a small verbatim window plus a rolling summary that gets
+regenerated periodically and replaces its predecessor, so it stays a fixed
+size no matter how long the bot runs.
+
+**Names are not people.** A username tells the model nothing. After someone
+has sent enough messages, a background call writes a short profile of them
+that is refined over time and persisted, so the bot eventually knows who it
+is talking to.
+
+**Group chats are not one-to-one.** When several people trigger it at once,
+naively answering the first one and ignoring the rest reads as broken. Those
+get batched into a single reply that addresses everyone.
 
 ## Warning: read this first
 
@@ -34,8 +55,8 @@ catchphrases.
 **2. Install:**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-cd YOUR_REPO
+git clone https://github.com/YOUR_USERNAME/instagram-claude-bot.git
+cd instagram-claude-bot
 pip install -r requirements.txt
 ```
 
@@ -102,27 +123,13 @@ To completely reskin the bot, change `BOT_NAME`, `WATCH_WORD`, and
 real-time push, but simple and reliable. Instagram's private API does expose
 an MQTT realtime channel if you want to go further.
 
-**Context, cheaply.** Sending the whole chat history on every reply gets
-expensive fast. Instead the bot sends the last ~10 messages verbatim plus a
-3-4 sentence rolling summary that gets regenerated every 30 messages. A few
-sentences covering hours of chat costs far less than the raw transcript.
-
-**Learned personas.** After someone sends 15 messages, a background call
-writes a short neutral note about them, saved to `data/personas.json` and
-refined over time. That is why the bot eventually knows who is who.
-
-**Anti-repetition.** LLMs latch onto a phrase that landed once and reuse it
-until it is stale. Before each reply, the bot scans its own recent replies
-for 2-4 word phrases appearing in multiple messages, filters out ordinary
-English, and explicitly instructs itself not to reuse the survivors.
-
-**Batching.** If several people trigger it in the same poll cycle, it makes
-one API call and sends one reply addressing everyone, rather than firing off
-a separate message per person.
-
 **Session reuse.** Instagram challenges accounts that appear to log in from
 a new device every time. The bot saves its device fingerprint before its
 first login attempt and reuses it, which avoids most checkpoint prompts.
+
+**Error handling.** Failures are logged to `data/bot.log` with full
+tracebacks while the loop stays alive, and repeated errors back off
+exponentially rather than hammering a rate-limited API.
 
 ## Troubleshooting
 
@@ -152,6 +159,16 @@ Anthropic's API for processing.
 
 To reset the bot's memory, delete `data/personas.json` and
 `data/chat_summary.txt`. To force a fresh login, delete `data/session.json`.
+
+## Regenerating the demo
+
+The GIF above is generated, not recorded. `docs/make_demo.py` renders it
+frame by frame with Pillow, so you can edit the script to change the
+conversation and re-run it:
+
+```bash
+python docs/make_demo.py
+```
 
 ## License
 
